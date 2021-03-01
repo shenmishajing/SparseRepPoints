@@ -49,3 +49,9 @@ def add_sparsereppoints_config(cfg):
     cfg.SOLVER.OPTIMIZER = "ADAMW"
     cfg.SOLVER.BACKBONE_MULTIPLIER = 1.0
 
+    # Add config for WANDB.
+    cfg.WANDB = CN()
+    cfg.WANDB.ENABLE = True
+    cfg.WANDB.PROJECT = 'sparse-reppoints'
+    cfg.WANDB.NAME = 'test'
+    cfg.WANDB.TAGS = []
