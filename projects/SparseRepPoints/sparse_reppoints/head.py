@@ -144,6 +144,7 @@ class PointFeatHead(nn.Module):
             topk_offset = torch.gather(offset.reshape((batch_size, 2 * self.num_points, -1)).permute(0, 2, 1), 1, topk_idx_repeat)
             topk_points = topk_offset.reshape((batch_size, -1, self.num_points, 2)) + topk_xys[i][:, :, None, :].repeat(
                 (1, 1, self.num_points, 1))  # [b, top_k, num_points, 2]
+            topk_points = 2 * topk_points - 1
 
             topk_feat = F.grid_sample(x, topk_points, padding_mode = 'border')  # [b, C, top_k, num_points], padding
             point_feats.append(topk_feat)
