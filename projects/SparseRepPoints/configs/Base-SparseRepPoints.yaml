@@ -14,7 +14,7 @@ MODEL:
         NUM_CLASSES: 80
 DATASETS:
     TRAIN: ("coco_2017_train",)
-    TEST: ("coco_2017_train","coco_2017_val",)
+    TEST: ("coco_2017_val",)
 SOLVER:
     IMS_PER_BATCH: 16
     BASE_LR: 0.000025
@@ -39,7 +39,7 @@ INPUT:
         SIZE: (384, 600)
     FORMAT: "RGB"
 TEST:
-    EVAL_PERIOD: 7330
+    EVAL_PERIOD: 2000
 DATALOADER:
     FILTER_EMPTY_ANNOTATIONS: False
     NUM_WORKERS: 4
