@@ -1,5 +1,4 @@
 _BASE_: "Base-SparseRepPoints.yaml"
-OUTPUT_DIR: '/data/ctt/output/SparseRepPoints-main/res50'
 MODEL:
   WEIGHTS: "detectron2://ImageNetPretrained/torchvision/R-50.pkl"
   RESNETS:
