@@ -13,6 +13,7 @@ import os
 import itertools
 import time
 import wandb
+import yaml
 from typing import Any, Dict, List, Set
 
 import torch
@@ -100,6 +101,13 @@ class Trainer(DefaultTrainer):
             optimizer = maybe_add_gradient_clipping(cfg, optimizer)
         return optimizer
 
+def cfg_node_to_dict(cfg):
+    """
+    We needs this because ``yacs`` over-encapsulates this logic:
+    https://github.com/rbgirshick/yacs/blob/32d5e4ac/yacs/config.py#L188-L204
+    """
+    raw_cfg = yaml.safe_load(cfg.dump())
+    return raw_cfg
 
 def setup(args):
     """
