@@ -53,6 +53,11 @@ class Trainer(DefaultTrainer):
         return build_detection_train_loader(cfg, mapper = mapper)
 
     @classmethod
+    def build_test_loader(cls, cfg, dataset_name):
+        mapper = SparseRepPointsDatasetMapper(cfg, is_train = True)
+        return build_detection_test_loader(cfg, dataset_name, mapper = mapper)
+
+    @classmethod
     def build_optimizer(cls, cfg, model):
         params: List[Dict[str, Any]] = []
         memo: Set[torch.nn.parameter.Parameter] = set()

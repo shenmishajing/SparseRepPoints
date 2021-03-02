@@ -102,6 +102,7 @@ class PointFeatHead(nn.Module):
         self.relu = nn.ReLU(inplace = True)
         self.offset_conv = nn.Conv2d(d_feat, d_feat, 3, 1, 1)
         self.offset_out = nn.Conv2d(d_feat, pts_out_dim, 1, 1, 0)
+        self.sigmoid = nn.Sigmoid()
 
         # Build Objectness Head.
         self.objectness_heads = nn.ModuleDict(
@@ -138,7 +139,7 @@ class PointFeatHead(nn.Module):
         point_feats = list()
         position_feats = list()
         for i, x in enumerate(features):
-            offset = F.sigmoid(self.offset_out(self.relu(self.offset_conv(x))))  # [b, 2*num_points, w, h]
+            offset = self.sigmoid(self.offset_out(self.relu(self.offset_conv(x))))  # [b, 2*num_points, w, h]
 
             topk_idx_repeat = topk_indices[i][:, :, None].repeat([1, 1, 2 * self.num_points])  # [b, top_k, 2*num_points]
             topk_offset = torch.gather(offset.reshape((batch_size, 2 * self.num_points, -1)).permute(0, 2, 1), 1, topk_idx_repeat)
@@ -146,7 +147,7 @@ class PointFeatHead(nn.Module):
                 (1, 1, self.num_points, 1))  # [b, top_k, num_points, 2]
             topk_points = 2 * topk_points - 1
 
-            topk_feat = F.grid_sample(x, topk_points, padding_mode = 'border')  # [b, C, top_k, num_points], padding
+            topk_feat = F.grid_sample(x, topk_points, padding_mode = 'border', align_corners = False)  # [b, C, top_k, num_points], padding
             point_feats.append(topk_feat)
             position_feats.append(self.position_encoding(topk_feat))
 
