@@ -46,6 +46,7 @@ class SparseRepPoints(nn.Module):
         self.num_classes = cfg.MODEL.SparseRepPoints.NUM_CLASSES  # 80
         self.k = cfg.MODEL.SparseRepPoints.TOP_K  # 20
         self.num_objects = len(self.in_features) * self.k
+        self.refine = cfg.MODEL.SparseRepPoints.REFINE
 
         # Build Backbone.
         self.backbone = build_backbone(cfg)
@@ -70,7 +71,10 @@ class SparseRepPoints(nn.Module):
                                    use_focal = self.use_focal)
         weight_dict = {"loss_ce": class_weight, "loss_bbox": l1_weight, "loss_giou": giou_weight, "loss_objectness": objectness_weight}
 
-        losses = ["labels", "boxes", "objectness"]
+        if self.refine:
+            losses = ["labels", "boxes", "ref_labels", "ref_boxes", "objectness"]
+        else:
+            losses = ["labels", "boxes", "objectness"]
 
         self.criterion = SetCriterion(cfg = cfg,
                                       num_classes = self.num_classes,
@@ -112,8 +116,15 @@ class SparseRepPoints(nn.Module):
             features.append(feature)
 
         # Prediction.
-        outputs_class, outputs_coord, center_objectness = self.sparse_head(features)
-        output = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1], 'center_objectness': center_objectness}
+        if self.refine:
+            outputs_class, outputs_coord, ref_outputs_class, ref_outputs_coord, center_objectness = self.sparse_head(
+                features)
+            output = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1],
+                      'ref_pred_logits': ref_outputs_class[-1], 'ref_pred_boxes': ref_outputs_coord[-1],
+                      'center_objectness': center_objectness}
+        else:
+            outputs_class, outputs_coord, center_objectness = self.sparse_head(features)
+            output = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1], 'center_objectness': center_objectness}
 
         gt_instances = [x["instances"].to(self.device) for x in batched_inputs]
         targets = self.prepare_targets(gt_instances, [p.shape[1:] for p in output['center_objectness']])

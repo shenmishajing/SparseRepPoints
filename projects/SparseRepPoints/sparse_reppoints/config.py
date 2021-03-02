@@ -40,7 +40,7 @@ def add_sparsereppoints_config(cfg):
     cfg.MODEL.SparseRepPoints.NO_OBJECT_WEIGHT = 0.1
 
     # Focal Loss.
-    cfg.MODEL.SparseRepPoints.USE_FOCAL = True
+    cfg.MODEL.SparseRepPoints.USE_FOCAL = False
     cfg.MODEL.SparseRepPoints.ALPHA = 0.25
     cfg.MODEL.SparseRepPoints.GAMMA = 2.0
     cfg.MODEL.SparseRepPoints.PRIOR_PROB = 0.01
