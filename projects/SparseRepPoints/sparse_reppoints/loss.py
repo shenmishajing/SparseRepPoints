@@ -44,6 +44,7 @@ class SetCriterion(nn.Module):
         self.eos_coef = eos_coef
         self.losses = losses
         self.use_focal = use_focal
+        self.refine = cfg.MODEL.SparseRepPoints.REFINE
         if self.use_focal:
             self.focal_loss_alpha = cfg.MODEL.SparseRepPoints.ALPHA
             self.focal_loss_gamma = cfg.MODEL.SparseRepPoints.GAMMA
@@ -143,6 +144,8 @@ class SetCriterion(nn.Module):
         loss_map = {
             'labels': self.loss_labels,
             'boxes': self.loss_boxes,
+            'ref_labels': self.loss_labels,
+            'ref_boxes': self.loss_boxes,
             'objectness': self.loss_objectness,
         }
         assert loss in loss_map, f'do you really want to compute {loss} loss?'
@@ -155,10 +158,14 @@ class SetCriterion(nn.Module):
              targets: list of dicts, such that len(targets) == batch_size.
                       The expected keys in each dict depends on the losses applied, see each loss' doc
         """
-        outputs_without_aux = {k: v for k, v in outputs.items() if k != 'aux_outputs'}
+        # outputs_without_aux = {k: v for k, v in outputs.items() if k != 'aux_outputs'}
 
         # Retrieve the matching between the outputs of the last layer and the targets
-        indices = self.matcher(outputs_without_aux, targets)
+        if self.refine:
+            ref_outputs = {'pred_logits': outputs['ref_pred_logits'],
+                           'pred_boxes': outputs['ref_pred_boxes']}
+            ref_indices = self.matcher(ref_outputs, targets)
+        indices = self.matcher(outputs, targets)
 
         # Compute the average number of target boxes accross all nodes, for normalization purposes
         num_boxes = sum(len(t["labels"]) for t in targets)
@@ -170,7 +177,10 @@ class SetCriterion(nn.Module):
         # Compute all the requested losses
         losses = {}
         for loss in self.losses:
-            losses.update(self.get_loss(loss, outputs, targets, indices, num_boxes))
+            if 'ref' in loss:
+                losses.update(self.get_loss(loss, ref_outputs, targets, ref_indices, num_boxes))
+            else:
+                losses.update(self.get_loss(loss, outputs, targets, indices, num_boxes))
 
         # In case of auxiliary losses, we repeat this process with the output of each intermediate layer.
         if 'aux_outputs' in outputs:
