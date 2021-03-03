@@ -208,6 +208,8 @@ class SparseRepPoints(nn.Module):
         assert len(box_cls) == len(image_sizes)
         results = []
 
+        box_pred = box_cxcywh_to_xyxy(box_pred)
+
         if self.use_focal:
             scores = torch.sigmoid(box_cls)
             labels = torch.arange(self.num_classes, device = self.device). \

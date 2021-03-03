@@ -42,7 +42,7 @@ class SparseRepPointsHead(nn.Module):
 
         if self.delta_xy:
             point_feats, position_feats, center_objectness, topk_xys = self.point_feat_head(features)
-            init_xys = torch.cat(topk_xys, dim=1)
+            init_xys = torch.cat(topk_xys, dim = 1)
         else:
             point_feats, position_feats, center_objectness = self.point_feat_head(features)
 
@@ -50,15 +50,15 @@ class SparseRepPointsHead(nn.Module):
             point_feats, ref_point_feats = point_feats['init_feat'], point_feats['refine_feat']
             position_feats, ref_position_feats = position_feats['init_feat'], position_feats['refine_feat']
 
-            ref_point_feats = torch.cat(ref_point_feats, dim=2)
-            ref_position_feats = torch.cat(ref_position_feats, dim=2)
+            ref_point_feats = torch.cat(ref_point_feats, dim = 2)
+            ref_position_feats = torch.cat(ref_position_feats, dim = 2)
             ref_class_logits, ref_pred_bboxes = self.predict_head(ref_point_feats, ref_position_feats)
 
             if self.delta_xy:
                 ref_pred_bboxes[:, :, :2] = ref_pred_bboxes[:, :, :2] + init_xys
 
-        point_feats = torch.cat(point_feats, dim=2)
-        position_feats = torch.cat(position_feats, dim=2)
+        point_feats = torch.cat(point_feats, dim = 2)
+        position_feats = torch.cat(position_feats, dim = 2)
         class_logits, pred_bboxes = self.predict_head(point_feats, position_feats)
 
         if self.delta_xy:
@@ -145,7 +145,7 @@ class PointFeatHead(nn.Module):
                                  self.dcn_pad + 1).astype(np.float64)
             dcn_base_y = np.repeat(dcn_base, self.dcn_kernel)
             dcn_base_x = np.tile(dcn_base, self.dcn_kernel)
-            dcn_base_offset = np.stack([dcn_base_y, dcn_base_x], axis=1).reshape(
+            dcn_base_offset = np.stack([dcn_base_y, dcn_base_x], axis = 1).reshape(
                 (-1))
             self.dcn_base_offset = torch.tensor(dcn_base_offset).view(1, -1, 1, 1)
 
@@ -193,7 +193,7 @@ class PointFeatHead(nn.Module):
                 dcn_base_offset = self.dcn_base_offset.type_as(x)
                 dcn_offset = offset - dcn_base_offset
                 x = self.relu(self.refine_dconv(x, dcn_offset))
-                refine_offset = self.refine_offset_out(self.relu(self.refine_offset_conv(x)))
+                refine_offset = self.sigmoid(self.refine_offset_out(self.relu(self.refine_offset_conv(x))))
                 refine_topk_feat = self.sample_feat(x, offset + refine_offset, topk_xys[i], topk_indices[i], batch_size)
                 refine_point_feats.append(refine_topk_feat)
                 refine_position_feats.append(self.position_encoding(refine_topk_feat))
@@ -215,7 +215,7 @@ class PointFeatHead(nn.Module):
             (1, 1, self.num_points, 1))  # [b, top_k, num_points, 2]
         topk_points = 2 * topk_points - 1
 
-        topk_feat = F.grid_sample(feature, topk_points, padding_mode='border')  # [b, C, top_k, num_points], padding
+        topk_feat = F.grid_sample(feature, topk_points, padding_mode = 'border', align_corners = False)  # [b, C, top_k, num_points]
         return topk_feat
 
 
