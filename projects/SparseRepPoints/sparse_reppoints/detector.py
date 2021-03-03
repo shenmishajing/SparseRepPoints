@@ -196,7 +196,7 @@ class SparseRepPoints(nn.Module):
             box_cls (Tensor): tensor of shape (batch_size, num_proposals, K).
                 The tensor predicts the classification probability for each proposal.
             box_pred (Tensor): tensors of shape (batch_size, num_proposals, 4).
-                The tensor predicts 4-vector (x,y,w,h) box
+                The tensor predicts 4-vector (x1, y1, x2, y2) box
                 regression values for every proposal
             image_sizes (List[torch.Size]): the input image sizes
 
@@ -205,8 +205,6 @@ class SparseRepPoints(nn.Module):
         """
         assert len(box_cls) == len(image_sizes)
         results = []
-
-        box_pred = box_cxcywh_to_xyxy(box_pred)
 
         if self.use_focal:
             scores = torch.sigmoid(box_cls)
