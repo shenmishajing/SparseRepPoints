@@ -299,6 +299,8 @@ class COCOEvaluator(DatasetEvaluator):
         res = {}
         for k in predictions[0]['loss_dict']:
             res[k] = np.mean([p['loss_dict'][k] for p in predictions])
+        if 'total_loss' not in res:
+            res['total_loss'] = np.sum(list(res.values()))
         self._results["loss_dict"] = res
 
     def _derive_coco_results(self, coco_eval, iou_type, class_names = None):

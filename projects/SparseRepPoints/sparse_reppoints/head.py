@@ -227,7 +227,7 @@ class PredictHead(nn.Module):
         num_classes = cfg.MODEL.SparseRepPoints.NUM_CLASSES  # 80
         num_points = cfg.MODEL.SparseRepPoints.NUM_POINTS
         d_feat = cfg.MODEL.SparseRepPoints.HIDDEN_DIM
-        use_focal = cfg.MODEL.SparseRepPoints.USE_FOCAL = False
+        use_focal = cfg.MODEL.SparseRepPoints.USE_FOCAL
 
         # TODO add
         d_combine = num_points * (d_feat + d_feat)
