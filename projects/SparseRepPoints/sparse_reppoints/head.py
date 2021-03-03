@@ -24,6 +24,7 @@ from detectron2.layers import DeformConv
 
 from detectron2.modeling.poolers import ROIPooler, cat
 from detectron2.structures import Boxes
+from .util.box_ops import box_cxcywh_to_xyxy
 
 _DEFAULT_SCALE_CLAMP = math.log(100000.0 / 16)
 
@@ -64,7 +65,9 @@ class SparseRepPointsHead(nn.Module):
         if self.delta_xy:
             pred_bboxes[:, :, :2] = pred_bboxes[:, :, :2] + init_xys
 
+        pred_bboxes = box_cxcywh_to_xyxy(pred_bboxes)
         if self.refine:
+            ref_pred_bboxes = box_cxcywh_to_xyxy(ref_pred_bboxes)
             return class_logits[None], pred_bboxes[None], ref_class_logits[None], ref_pred_bboxes[
                 None], center_objectness
         return class_logits[None], pred_bboxes[None], center_objectness

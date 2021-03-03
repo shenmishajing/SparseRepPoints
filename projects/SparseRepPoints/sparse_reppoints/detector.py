@@ -158,7 +158,6 @@ class SparseRepPoints(nn.Module):
             image_size_xyxy = torch.as_tensor([w, h, w, h], dtype = torch.float, device = self.device)
             gt_classes = targets_per_image.gt_classes
             gt_boxes = targets_per_image.gt_boxes.tensor / image_size_xyxy
-            gt_boxes = box_xyxy_to_cxcywh(gt_boxes)
             target["labels"] = gt_classes.to(self.device)
             target["boxes"] = gt_boxes.to(self.device)
             target["boxes_xyxy"] = targets_per_image.gt_boxes.tensor.to(self.device)
@@ -174,13 +173,12 @@ class SparseRepPoints(nn.Module):
                                      (torch.arange(w, dtype = torch.float, device = self.device) / w)[None, :].expand(h, -1)),
                                     dim = -1)[
                             None]
-                    boxes = targets_per_image.gt_boxes.tensor / image_size_xyxy
-                    l = xy[..., 1] - boxes[:, None, None, 0]
-                    r = boxes[:, None, None, 2] - xy[..., 1]
-                    t = xy[..., 0] - boxes[:, None, None, 1]
-                    b = boxes[:, None, None, 3] - xy[..., 0]
+                    l = xy[..., 1] - gt_boxes[:, None, None, 0]
+                    r = gt_boxes[:, None, None, 2] - xy[..., 1]
+                    t = xy[..., 0] - gt_boxes[:, None, None, 1]
+                    b = gt_boxes[:, None, None, 3] - xy[..., 0]
                     in_box = (l > 0) & (r > 0) & (t > 0) & (b > 0)
-                    obj = torch.zeros((boxes.shape[0], h, w), dtype = torch.float, device = self.device)
+                    obj = torch.zeros((gt_boxes.shape[0], h, w), dtype = torch.float, device = self.device)
                     obj[in_box] = torch.sqrt(torch.min(l, r) / torch.max(l, r) * torch.min(t, b) / torch.max(t, b))[
                         in_box]
                     objectness, _ = torch.max(obj, dim = 0)

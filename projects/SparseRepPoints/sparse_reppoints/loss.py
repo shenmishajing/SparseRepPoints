@@ -94,7 +94,7 @@ class SetCriterion(nn.Module):
     def loss_boxes(self, outputs, targets, indices, num_boxes):
         """Compute the losses related to the bounding boxes, the L1 regression loss and the GIoU loss
            targets dicts must contain the key "boxes" containing a tensor of dim [nb_target_boxes, 4]
-           The target boxes are expected in format (center_x, center_y, w, h), normalized by the image size.
+           The target boxes are expected in format (x2, y2, x2, y2), normalized by the image size.
         """
         assert 'pred_boxes' in outputs
         idx = self._get_src_permutation_idx(indices)
@@ -106,9 +106,7 @@ class SetCriterion(nn.Module):
         losses = {}
         losses['loss_bbox'] = loss_bbox.sum() / num_boxes
 
-        loss_giou = 1 - torch.diag(box_ops.generalized_box_iou(
-            box_ops.box_cxcywh_to_xyxy(src_boxes),
-            box_ops.box_cxcywh_to_xyxy(target_boxes)))
+        loss_giou = 1 - torch.diag(box_ops.generalized_box_iou(src_boxes, target_boxes))
         losses['loss_giou'] = loss_giou.sum() / num_boxes
 
         return losses
@@ -277,8 +275,7 @@ class HungarianMatcher(nn.Module):
         cost_bbox = [torch.cdist(out_bbox[i], tgt_bbox, p = 1) for i, tgt_bbox in enumerate(tgt_bboxes)]
 
         # Compute the giou cost betwen boxes
-        cost_giou = [-generalized_box_iou(box_cxcywh_to_xyxy(out_bbox[i]), box_cxcywh_to_xyxy(tgt_bbox)) for i, tgt_bbox in
-                     enumerate(tgt_bboxes)]
+        cost_giou = [-generalized_box_iou(out_bbox[i], tgt_bbox) for i, tgt_bbox in enumerate(tgt_bboxes)]
 
         # Final cost matrix
         C = [self.cost_bbox * cost_bbox[i] + self.cost_class * cost_class[i] + self.cost_giou * cost_giou[i] for i in
