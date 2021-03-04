@@ -24,6 +24,7 @@ from detectron2.layers import DeformConv
 
 from detectron2.modeling.poolers import ROIPooler, cat
 from detectron2.structures import Boxes
+from .util.box_ops import box_cxcywh_to_xyxy
 
 _DEFAULT_SCALE_CLAMP = math.log(100000.0 / 16)
 
@@ -42,7 +43,7 @@ class SparseRepPointsHead(nn.Module):
 
         if self.delta_xy:
             point_feats, position_feats, center_objectness, topk_xys = self.point_feat_head(features)
-            init_xys = torch.cat(topk_xys, dim=1)
+            init_xys = torch.cat(topk_xys, dim = 1)
         else:
             point_feats, position_feats, center_objectness = self.point_feat_head(features)
 
@@ -50,21 +51,23 @@ class SparseRepPointsHead(nn.Module):
             point_feats, ref_point_feats = point_feats['init_feat'], point_feats['refine_feat']
             position_feats, ref_position_feats = position_feats['init_feat'], position_feats['refine_feat']
 
-            ref_point_feats = torch.cat(ref_point_feats, dim=2)
-            ref_position_feats = torch.cat(ref_position_feats, dim=2)
+            ref_point_feats = torch.cat(ref_point_feats, dim = 2)
+            ref_position_feats = torch.cat(ref_position_feats, dim = 2)
             ref_class_logits, ref_pred_bboxes = self.predict_head(ref_point_feats, ref_position_feats)
 
             if self.delta_xy:
                 ref_pred_bboxes[:, :, :2] = ref_pred_bboxes[:, :, :2] + init_xys
 
-        point_feats = torch.cat(point_feats, dim=2)
-        position_feats = torch.cat(position_feats, dim=2)
+        point_feats = torch.cat(point_feats, dim = 2)
+        position_feats = torch.cat(position_feats, dim = 2)
         class_logits, pred_bboxes = self.predict_head(point_feats, position_feats)
 
         if self.delta_xy:
             pred_bboxes[:, :, :2] = pred_bboxes[:, :, :2] + init_xys
 
+        pred_bboxes = box_cxcywh_to_xyxy(pred_bboxes)
         if self.refine:
+            ref_pred_bboxes = box_cxcywh_to_xyxy(ref_pred_bboxes)
             return class_logits[None], pred_bboxes[None], ref_class_logits[None], ref_pred_bboxes[
                 None], center_objectness
         return class_logits[None], pred_bboxes[None], center_objectness
@@ -122,6 +125,7 @@ class PointFeatHead(nn.Module):
         self.relu = nn.ReLU(inplace = True)
         self.offset_conv = nn.Conv2d(d_feat, d_feat, 3, 1, 1)
         self.offset_out = nn.Conv2d(d_feat, pts_out_dim, 1, 1, 0)
+        self.sigmoid = nn.Sigmoid()
 
         # Build Objectness Head.
         self.objectness_heads = nn.ModuleDict(
@@ -144,7 +148,7 @@ class PointFeatHead(nn.Module):
                                  self.dcn_pad + 1).astype(np.float64)
             dcn_base_y = np.repeat(dcn_base, self.dcn_kernel)
             dcn_base_x = np.tile(dcn_base, self.dcn_kernel)
-            dcn_base_offset = np.stack([dcn_base_y, dcn_base_x], axis=1).reshape(
+            dcn_base_offset = np.stack([dcn_base_y, dcn_base_x], axis = 1).reshape(
                 (-1))
             self.dcn_base_offset = torch.tensor(dcn_base_offset).view(1, -1, 1, 1)
 
@@ -183,7 +187,7 @@ class PointFeatHead(nn.Module):
         refine_point_feats = list()
         refine_position_feats = list()
         for i, x in enumerate(features):
-            offset = F.sigmoid(self.offset_out(self.relu(self.offset_conv(x))))  # [b, 2*num_points, w, h]
+            offset = self.sigmoid(self.offset_out(self.relu(self.offset_conv(x))))  # [b, 2*num_points, w, h]
             topk_feat = self.sample_feat(x, offset, topk_xys[i], topk_indices[i], batch_size)
 
             pos = self.position_encoding(x)
@@ -196,7 +200,7 @@ class PointFeatHead(nn.Module):
                 dcn_base_offset = self.dcn_base_offset.type_as(x)
                 dcn_offset = offset - dcn_base_offset
                 x = self.relu(self.refine_dconv(x, dcn_offset))
-                refine_offset = self.refine_offset_out(self.relu(self.refine_offset_conv(x)))
+                refine_offset = self.sigmoid(self.refine_offset_out(self.relu(self.refine_offset_conv(x))))
                 refine_topk_feat = self.sample_feat(x, offset + refine_offset, topk_xys[i], topk_indices[i], batch_size)
 
                 refine_pos = self.position_encoding(x)
@@ -222,7 +226,7 @@ class PointFeatHead(nn.Module):
             (1, 1, self.num_points, 1))  # [b, top_k, num_points, 2]
         topk_points = 2 * topk_points - 1
 
-        topk_feat = F.grid_sample(feature, topk_points, padding_mode='border')  # [b, C, top_k, num_points], padding
+        topk_feat = F.grid_sample(feature, topk_points, padding_mode = 'border', align_corners = False)  # [b, C, top_k, num_points]
         return topk_feat
 
 
@@ -234,7 +238,7 @@ class PredictHead(nn.Module):
         num_classes = cfg.MODEL.SparseRepPoints.NUM_CLASSES  # 80
         num_points = cfg.MODEL.SparseRepPoints.NUM_POINTS
         d_feat = cfg.MODEL.SparseRepPoints.HIDDEN_DIM
-        use_focal = cfg.MODEL.SparseRepPoints.USE_FOCAL = False
+        use_focal = cfg.MODEL.SparseRepPoints.USE_FOCAL
 
         # TODO add
         d_combine = num_points * (d_feat + d_feat)
