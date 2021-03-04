@@ -125,7 +125,7 @@ class PointFeatHead(nn.Module):
         self.relu = nn.ReLU(inplace = True)
         self.offset_conv = nn.Conv2d(d_feat, d_feat, 3, 1, 1)
         self.offset_out = nn.Conv2d(d_feat, pts_out_dim, 1, 1, 0)
-        self.sigmoid = nn.Sigmoid()
+        self.tanh = nn.Tanh()
 
         # Build Objectness Head.
         self.objectness_heads = nn.ModuleDict(
@@ -188,7 +188,7 @@ class PointFeatHead(nn.Module):
         refine_position_feats = list()
         for i, x in enumerate(features):
             N, C, H, W = x.shape
-            offset = self.sigmoid(self.offset_out(self.relu(self.offset_conv(x))))  # [b, 2*num_points, w, h]
+            offset = self.tanh(self.offset_out(self.relu(self.offset_conv(x))))  # [b, 2*num_points, w, h]
             topk_feat = self.sample_feat(x, offset, topk_xys[i], topk_indices[i], batch_size)
 
             pos = self.position_encoding(x)
@@ -204,7 +204,7 @@ class PointFeatHead(nn.Module):
                 dcn_offset[:, 1::2, :, :] = offset[:, 1::2, :, :] * W
                 dcn_offset -= dcn_base_offset
                 x = self.relu(self.refine_dconv(x, dcn_offset))
-                refine_offset = self.sigmoid(self.refine_offset_out(self.relu(self.refine_offset_conv(x))))
+                refine_offset = self.tanh(self.refine_offset_out(self.relu(self.refine_offset_conv(x))))
                 refine_topk_feat = self.sample_feat(x, offset + refine_offset, topk_xys[i], topk_indices[i], batch_size)
 
                 refine_pos = self.position_encoding(x)

@@ -54,4 +54,4 @@ def add_sparsereppoints_config(cfg):
     cfg.WANDB.ENABLE = True
     cfg.WANDB.PROJECT = 'sparse-reppoints'
     cfg.WANDB.NAME = 'test'
-    cfg.WANDB.TAGS = []
+    cfg.WANDB.TAGS = ['Sparse-RepPoints']

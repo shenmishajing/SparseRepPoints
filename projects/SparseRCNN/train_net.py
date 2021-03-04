@@ -12,6 +12,8 @@ This script is a simplified version of the training script in detectron2/tools.
 import os
 import itertools
 import time
+import wandb
+import yaml
 from typing import Any, Dict, List, Set
 
 import torch
@@ -28,12 +30,12 @@ from sparsercnn import SparseRCNNDatasetMapper, add_sparsercnn_config
 
 
 class Trainer(DefaultTrainer):
-#     """
-#     Extension of the Trainer class adapted to SparseRCNN.
-#     """
+    #     """
+    #     Extension of the Trainer class adapted to SparseRCNN.
+    #     """
 
     @classmethod
-    def build_evaluator(cls, cfg, dataset_name, output_folder=None):
+    def build_evaluator(cls, cfg, dataset_name, output_folder = None):
         """
         Create evaluator(s) for a given dataset.
         This uses the special metadata "evaluator_type" associated with each builtin dataset.
@@ -46,14 +48,14 @@ class Trainer(DefaultTrainer):
 
     @classmethod
     def build_train_loader(cls, cfg):
-        mapper = SparseRCNNDatasetMapper(cfg, is_train=True)
-        return build_detection_train_loader(cfg, mapper=mapper)
+        mapper = SparseRCNNDatasetMapper(cfg, is_train = True)
+        return build_detection_train_loader(cfg, mapper = mapper)
 
     @classmethod
     def build_optimizer(cls, cfg, model):
         params: List[Dict[str, Any]] = []
         memo: Set[torch.nn.parameter.Parameter] = set()
-        for key, value in model.named_parameters(recurse=True):
+        for key, value in model.named_parameters(recurse = True):
             if not value.requires_grad:
                 continue
             # Avoid duplicating parameters
@@ -70,23 +72,23 @@ class Trainer(DefaultTrainer):
             # detectron2 doesn't have full model gradient clipping now
             clip_norm_val = cfg.SOLVER.CLIP_GRADIENTS.CLIP_VALUE
             enable = (
-                cfg.SOLVER.CLIP_GRADIENTS.ENABLED
-                and cfg.SOLVER.CLIP_GRADIENTS.CLIP_TYPE == "full_model"
-                and clip_norm_val > 0.0
+                    cfg.SOLVER.CLIP_GRADIENTS.ENABLED
+                    and cfg.SOLVER.CLIP_GRADIENTS.CLIP_TYPE == "full_model"
+                    and clip_norm_val > 0.0
             )
 
             class FullModelGradientClippingOptimizer(optim):
-                def step(self, closure=None):
+                def step(self, closure = None):
                     all_params = itertools.chain(*[x["params"] for x in self.param_groups])
                     torch.nn.utils.clip_grad_norm_(all_params, clip_norm_val)
-                    super().step(closure=closure)
+                    super().step(closure = closure)
 
             return FullModelGradientClippingOptimizer if enable else optim
 
         optimizer_type = cfg.SOLVER.OPTIMIZER
         if optimizer_type == "SGD":
             optimizer = maybe_add_full_model_gradient_clipping(torch.optim.SGD)(
-                params, cfg.SOLVER.BASE_LR, momentum=cfg.SOLVER.MOMENTUM
+                params, cfg.SOLVER.BASE_LR, momentum = cfg.SOLVER.MOMENTUM
             )
         elif optimizer_type == "ADAMW":
             optimizer = maybe_add_full_model_gradient_clipping(torch.optim.AdamW)(
@@ -99,6 +101,15 @@ class Trainer(DefaultTrainer):
         return optimizer
 
 
+def cfg_node_to_dict(cfg):
+    """
+    We needs this because ``yacs`` over-encapsulates this logic:
+    https://github.com/rbgirshick/yacs/blob/32d5e4ac/yacs/config.py#L188-L204
+    """
+    raw_cfg = yaml.safe_load(cfg.dump())
+    return raw_cfg
+
+
 def setup(args):
     """
     Create configs and perform basic setups.
@@ -109,6 +120,9 @@ def setup(args):
     cfg.merge_from_list(args.opts)
     cfg.freeze()
     default_setup(cfg, args)
+    if comm.is_main_process():
+        wandb.init(project = cfg.WANDB.PROJECT, name = cfg.WANDB.NAME, tags = cfg.WANDB.TAGS, config = cfg_node_to_dict(cfg),
+                   sync_tensorboard = True)
     return cfg
 
 
@@ -117,14 +131,16 @@ def main(args):
 
     if args.eval_only:
         model = Trainer.build_model(cfg)
-        DetectionCheckpointer(model, save_dir=cfg.OUTPUT_DIR).resume_or_load(cfg.MODEL.WEIGHTS, resume=args.resume)
+        DetectionCheckpointer(model, save_dir = cfg.OUTPUT_DIR).resume_or_load(cfg.MODEL.WEIGHTS, resume = args.resume)
         res = Trainer.test(cfg, model)
         if comm.is_main_process():
             verify_results(cfg, res)
         return res
 
     trainer = Trainer(cfg)
-    trainer.resume_or_load(resume=args.resume)
+    trainer.resume_or_load(resume = args.resume)
+    if cfg.WANDB.ENABLE and comm.is_main_process():
+        wandb.watch(trainer.model)
     return trainer.train()
 
 
@@ -134,8 +150,8 @@ if __name__ == "__main__":
     launch(
         main,
         args.num_gpus,
-        num_machines=args.num_machines,
-        machine_rank=args.machine_rank,
-        dist_url=args.dist_url,
-        args=(args,),
+        num_machines = args.num_machines,
+        machine_rank = args.machine_rank,
+        dist_url = args.dist_url,
+        args = (args,),
     )
