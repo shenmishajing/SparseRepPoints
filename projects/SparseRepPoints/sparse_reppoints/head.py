@@ -187,6 +187,7 @@ class PointFeatHead(nn.Module):
         refine_point_feats = list()
         refine_position_feats = list()
         for i, x in enumerate(features):
+            N, C, H, W = x.shape
             offset = self.sigmoid(self.offset_out(self.relu(self.offset_conv(x))))  # [b, 2*num_points, w, h]
             topk_feat = self.sample_feat(x, offset, topk_xys[i], topk_indices[i], batch_size)
 
@@ -198,7 +199,10 @@ class PointFeatHead(nn.Module):
 
             if self.refine:
                 dcn_base_offset = self.dcn_base_offset.type_as(x)
-                dcn_offset = offset - dcn_base_offset
+                dcn_offset = torch.zeros_like(offset)
+                dcn_offset[:, ::2, :, :] = offset[:, ::2, :, :] * H
+                dcn_offset[:, 1::2, :, :] = offset[:, 1::2, :, :] * W
+                dcn_offset -= dcn_base_offset
                 x = self.relu(self.refine_dconv(x, dcn_offset))
                 refine_offset = self.sigmoid(self.refine_offset_out(self.relu(self.refine_offset_conv(x))))
                 refine_topk_feat = self.sample_feat(x, offset + refine_offset, topk_xys[i], topk_indices[i], batch_size)

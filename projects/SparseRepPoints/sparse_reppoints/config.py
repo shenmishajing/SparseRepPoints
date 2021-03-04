@@ -21,7 +21,7 @@ def add_sparsereppoints_config(cfg):
     cfg.MODEL.SparseRepPoints.TOP_K = 20
 
     # Position Encoding.
-    cfg.MODEL.SparseRepPoints.POSITION_EMBEDDING = "learned"
+    cfg.MODEL.SparseRepPoints.POSITION_EMBEDDING = "sine"
 
     # Offset Learning.
     cfg.MODEL.SparseRepPoints.NUM_POINTS = 9
