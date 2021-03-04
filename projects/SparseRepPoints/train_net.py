@@ -21,7 +21,7 @@ import torch
 import detectron2.utils.comm as comm
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import get_cfg
-from detectron2.data import MetadataCatalog, build_detection_train_loader
+from detectron2.data import MetadataCatalog, build_detection_train_loader, build_detection_test_loader
 from detectron2.engine import AutogradProfiler, DefaultTrainer, default_argument_parser, default_setup, launch
 from detectron2.evaluation import COCOEvaluator, verify_results
 from detectron2.solver.build import maybe_add_gradient_clipping
@@ -51,6 +51,11 @@ class Trainer(DefaultTrainer):
     def build_train_loader(cls, cfg):
         mapper = SparseRepPointsDatasetMapper(cfg, is_train = True)
         return build_detection_train_loader(cfg, mapper = mapper)
+
+    @classmethod
+    def build_test_loader(cls, cfg, dataset_name):
+        mapper = SparseRepPointsDatasetMapper(cfg, is_train = True)
+        return build_detection_test_loader(cfg, dataset_name, mapper = mapper)
 
     @classmethod
     def build_optimizer(cls, cfg, model):
