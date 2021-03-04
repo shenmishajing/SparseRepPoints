@@ -212,7 +212,6 @@ class RCNNHead(nn.Module):
         pred_bboxes = self.apply_deltas(bboxes_deltas, bboxes.view(-1, 4))
         
         return class_logits.view(N, nr_boxes, -1), pred_bboxes.view(N, nr_boxes, -1), obj_features
-    
 
     def apply_deltas(self, deltas, boxes):
         """

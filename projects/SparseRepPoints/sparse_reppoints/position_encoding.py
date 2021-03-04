@@ -23,9 +23,19 @@ class PositionEmbeddingSine(nn.Module):
             scale = 2 * math.pi
         self.scale = scale
 
-    def forward(self, tensor_list):
-        x = tensor_list.tensors
-        mask = tensor_list.mask
+    def forward(self, x):
+        batch_shape = x.size()
+        b, c, h, w = batch_shape
+        dtype = x.dtype
+        device = x.device
+
+        tensor = torch.zeros(batch_shape, dtype=dtype, device=device)
+        mask = torch.ones((b, h, w), dtype=torch.bool, device=device)
+
+        for img, pad_img, m in zip(x, tensor, mask):
+            pad_img[: img.shape[0], : img.shape[1], : img.shape[2]].copy_(img)
+            m[: img.shape[1], :img.shape[2]] = False
+
         not_mask = ~mask
         y_embed = not_mask.cumsum(1, dtype=torch.float32)
         x_embed = not_mask.cumsum(2, dtype=torch.float32)

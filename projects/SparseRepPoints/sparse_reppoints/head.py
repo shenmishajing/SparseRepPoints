@@ -185,8 +185,12 @@ class PointFeatHead(nn.Module):
         for i, x in enumerate(features):
             offset = F.sigmoid(self.offset_out(self.relu(self.offset_conv(x))))  # [b, 2*num_points, w, h]
             topk_feat = self.sample_feat(x, offset, topk_xys[i], topk_indices[i], batch_size)
+
+            pos = self.position_encoding(x)
+            topk_pos = self.sample_feat(pos, offset, topk_xys[i], topk_indices[i], batch_size)
+
             point_feats.append(topk_feat)
-            position_feats.append(self.position_encoding(topk_feat))
+            position_feats.append(topk_pos)
 
             if self.refine:
                 dcn_base_offset = self.dcn_base_offset.type_as(x)
@@ -194,8 +198,12 @@ class PointFeatHead(nn.Module):
                 x = self.relu(self.refine_dconv(x, dcn_offset))
                 refine_offset = self.refine_offset_out(self.relu(self.refine_offset_conv(x)))
                 refine_topk_feat = self.sample_feat(x, offset + refine_offset, topk_xys[i], topk_indices[i], batch_size)
+
+                refine_pos = self.position_encoding(x)
+                refine_topk_pos = self.sample_feat(refine_pos, offset + refine_offset, topk_xys[i], topk_indices[i], batch_size)
+
                 refine_point_feats.append(refine_topk_feat)
-                refine_position_feats.append(self.position_encoding(refine_topk_feat))
+                refine_position_feats.append(self.position_encoding(refine_topk_pos))
 
         if self.refine:
             point_feats = {'init_feat': point_feats, 'refine_feat': refine_point_feats}
